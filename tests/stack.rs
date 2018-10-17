@@ -4,20 +4,20 @@
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
-#![feature(alloc, heap_api, allocator_api)]
+#![feature(alloc, allocator_api)]
 
 extern crate alloc;
+extern crate core;
 extern crate fringe;
 
-use alloc::heap::Global;
-use alloc::allocator::{Alloc, Layout};
+use alloc::alloc::alloc;
 use alloc::boxed::Box;
+use core::alloc::Layout;
+use fringe::{OsStack, OwnedStack, SliceStack, Stack, STACK_ALIGNMENT};
 use std::slice;
-use fringe::{STACK_ALIGNMENT, Stack, SliceStack, OwnedStack, OsStack};
 
 unsafe fn heap_allocate(size: usize, align: usize) -> *mut u8 {
-  let ptr = Global.alloc(Layout::from_size_align_unchecked(size, align)).expect("couldn't allocate");
-  ptr.as_ptr() as *mut u8
+  alloc(Layout::from_size_align_unchecked(size, align))
 }
 
 #[test]
@@ -89,7 +89,9 @@ fn default_os_stack() {
   assert_eq!(stack.limit() as usize & (STACK_ALIGNMENT - 1), 0);
 
   // Make sure the topmost page of the stack, at least, is accessible.
-  unsafe { *(stack.base().offset(-1)) = 0; }
+  unsafe {
+    *(stack.base().offset(-1)) = 0;
+  }
 }
 
 #[test]
@@ -99,5 +101,7 @@ fn one_page_os_stack() {
   assert_eq!(stack.limit() as usize & (STACK_ALIGNMENT - 1), 0);
 
   // Make sure the topmost page of the stack, at least, is accessible.
-  unsafe { *(stack.base().offset(-1)) = 0; }
+  unsafe {
+    *(stack.base().offset(-1)) = 0;
+  }
 }
