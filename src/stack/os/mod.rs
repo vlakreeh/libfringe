@@ -40,7 +40,7 @@ impl OsStack {
     let len = len + page_size;
 
     // Allocate a stack.
-    let ptr = try!(unsafe { sys::map_stack(len) });
+    let ptr = unsafe { sys::map_stack(len) }?;
     let stack = OsStack {
       ptr: ptr,
       len: len,
@@ -48,7 +48,7 @@ impl OsStack {
 
     // Mark the guard page. If this fails, `stack` will be dropped,
     // unmapping it.
-    try!(unsafe { sys::protect_stack(stack.ptr) });
+    unsafe { sys::protect_stack(stack.ptr) }?;
 
     Ok(stack)
   }

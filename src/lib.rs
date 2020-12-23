@@ -5,7 +5,6 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 #![feature(llvm_asm, naked_functions, untagged_unions)]
-#![cfg_attr(feature = "alloc", feature(alloc, allocator_api))]
 #![cfg_attr(test, feature(test))]
 #![no_std]
 

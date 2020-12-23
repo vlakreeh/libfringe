@@ -16,6 +16,7 @@ use core::{ptr, mem};
 use core::cell::Cell;
 use core::mem::ManuallyDrop;
 
+use alloc::rc::Rc;
 use stack;
 use debug;
 use arch::{self, StackPointer};
@@ -98,7 +99,7 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   /// See also the [contract](../trait.GuardedStack.html) that needs to be fulfilled by `stack`.
   pub fn new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
       where Stack: stack::GuardedStack + 'static,
-            F: FnOnce(&Yielder<Input, Output>, Input) + 'a {
+            F: FnOnce(Rc<Yielder<Input, Output>>, Input) + 'a {
     unsafe { Generator::unsafe_new(stack, f) }
   }
 
@@ -110,9 +111,9 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   ///
   /// See also the [contract](../trait.Stack.html) that needs to be fulfilled by `stack`.
   pub unsafe fn unsafe_new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
-      where F: FnOnce(&Yielder<Input, Output>, Input) + 'a {
+      where F: FnOnce(Rc<Yielder<Input, Output>>, Input) + 'a {
     unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(env: usize, stack_ptr: StackPointer) -> !
-        where Stack: stack::Stack, F: FnOnce(&Yielder<Input, Output>, Input) {
+        where Stack: stack::Stack, F: FnOnce(Rc<Yielder<Input, Output>>, Input) {
       // Retrieve our environment from the callee and return control to it.
       let f = ptr::read(env as *const F);
       let (data, stack_ptr) = arch::swap(0, stack_ptr, None);
@@ -120,7 +121,8 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
       let input = ptr::read(data as *const Input);
       // Run the body of the generator.
       let yielder = Yielder::new(stack_ptr);
-      f(&yielder, input);
+      let yielder = Rc::new(yielder);
+      f(yielder.clone(), input);
       // Past this point, the generator has dropped everything it has held.
       loop { yielder.suspend_bare(None); }
     }

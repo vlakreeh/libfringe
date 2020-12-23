@@ -46,7 +46,7 @@
 // * The 1st init trampoline tells the unwinder to restore %rbp and its return
 //   address from the stack frame at %rbp (in the parent stack), thus continuing
 //   unwinding at the swap call site instead of falling off the end of context stack.
-use core::mem;
+use core::mem::MaybeUninit;
 use stack::Stack;
 
 pub const STACK_ALIGNMENT: usize = 16;
@@ -55,9 +55,10 @@ pub const STACK_ALIGNMENT: usize = 16;
 #[repr(transparent)]
 pub struct StackPointer(*mut usize);
 
-pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -> !) -> StackPointer {
+pub unsafe fn init(stack: &dyn Stack, f: unsafe extern "C" fn(usize, StackPointer) -> !) -> StackPointer {
   #[cfg(not(target_vendor = "apple"))]
   #[naked]
+  #[allow(unsupported_naked_functions)]
   unsafe extern "C" fn trampoline_1() {
     llvm_asm!(
       r#"
@@ -113,6 +114,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
   }
 
   #[naked]
+  #[allow(unsupported_naked_functions)]
   unsafe extern "C" fn trampoline_2() {
     llvm_asm!(
       r#"
@@ -170,9 +172,9 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
 
 #[inline(always)]
 pub unsafe fn swap(arg: usize, new_sp: StackPointer,
-                   new_stack: Option<&Stack>) -> (usize, StackPointer) {
+                   new_stack: Option<&dyn Stack>) -> (usize, StackPointer) {
   // Address of the topmost CFA stack slot.
-  let mut dummy: usize = mem::uninitialized();
+  let mut dummy: usize = MaybeUninit::uninit().assume_init();
   let new_cfa = if let Some(new_stack) = new_stack {
     (new_stack.base() as *mut usize).offset(-4)
   } else {

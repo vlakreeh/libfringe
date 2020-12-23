@@ -14,7 +14,7 @@ pub struct StackId(self::valgrind_request::Value);
 
 impl StackId {
   #[inline(always)]
-  pub fn register<Stack: stack::Stack>(stack: &Stack) -> StackId {
+  pub fn register<Stack: stack::Stack>(stack: &dyn Stack) -> StackId {
     StackId(stack_register(stack.limit(), stack.base()))
   }
 }
